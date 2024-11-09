@@ -11,7 +11,7 @@
 #include "hardware/adc.h"
 #include "pico/time.h"
 
-static const int VERSION = 1;
+static const int VERSION = 3;
 
 #define BAUDRATE 115200
 
@@ -23,12 +23,14 @@ static const uint DEBUG_PIN = 22;
 static const uint POWER_VOLTAGE = 0;
 static const uint BATTERY_VOLTAGE = 1;
 
-static const float VOLTAGE_SCALE = 0.216667;
+static const float VOLTAGE_SCALE = 0.173043;
 
 static const uint32_t EXPIRED = 1 << 31;
 
 static const int POWER_SAMPLE_COUNT = 16667;
 static const int POWER_SAMPLE_PERIOD = 10; // In microsends.
+
+static const float UPDATE_PERIOD = 10e6;
 
 struct Power {
     float voltage;
@@ -101,16 +103,16 @@ struct Power get_power_parameters (void) {
         total += buffer[i];
     }
     base_line = total / POWER_SAMPLE_COUNT;
-    printf("Base line = %d\n", base_line);
+    // printf("Base line = %d\n", base_line);
 
     // Subtract base line from all ADC values;
     for (i = 0; i < POWER_SAMPLE_COUNT; ++i) {
         buffer[i] = buffer[i] - base_line;
-        printf("%d\n", buffer[i]);
+        // printf("%d\n", buffer[i]);
     }
 
     // Convert ADC values to voltage squared and compute the total (sum of squares).
-    printf("Crossings: ");
+    // printf("Crossings: ");
     prev_value = buffer[0];
     for (i = 0; i < POWER_SAMPLE_COUNT; ++i) {
         squares += pow((float)buffer[i] * VOLTAGE_SCALE, 2.0);
@@ -119,11 +121,11 @@ struct Power get_power_parameters (void) {
         if ((prev_value * buffer[i]) < 0) {
             crossings[crossing_index++] = i;
             prev_value = buffer[i];
-            printf("%d ", i);
+            // printf("%d ", i);
             crossing_count += 1;
         }
     }
-    printf("\n");
+    // printf("\n");
 
     // Compute the RMS voltage.
     power.voltage = sqrt(squares / (float)POWER_SAMPLE_COUNT);
@@ -160,9 +162,21 @@ float get_battery_voltage(void) {
     return (float)sum * 305.18e-6;
 }
 
+int send_parameters(struct Power power_parameters, float battery_voltage) {
+    char buffer[80];
+
+    // Send generator voltage, generator frequency and battery voltage.
+    // Values have a '!' prefix.
+    sprintf(buffer, "!%0.2f %0.2f %0.2f\n", power_parameters.voltage,
+            power_parameters.frequency, battery_voltage);
+    uart_puts(uart0, buffer);
+
+    return 0;
+}
+
 int main(void) {
-    float voltage;
-    uint32_t update_timer = time_us_32() + 10e6;;
+    float battery_voltage;
+    uint32_t update_timer = time_us_32() + UPDATE_PERIOD;
     struct Power power;
 
     init_io();
@@ -171,12 +185,13 @@ int main(void) {
 
     while(1) {
         if ((update_timer - time_us_32()) > EXPIRED) {
-            update_timer = time_us_32() + 10e6;
+            update_timer = time_us_32() + UPDATE_PERIOD;
             gpio_put(SYSTEM_LED_PIN, 1);
-            voltage = get_battery_voltage();
-            printf("Battery voltage  %0.2f\n", voltage);
+            battery_voltage = get_battery_voltage();
+            printf("Battery voltage  = %0.2f, ", battery_voltage);
             power = get_power_parameters();
             printf("Power voltage = %0.2f, frequency = %0.2f\n", power.voltage, power.frequency);
+            send_parameters(power, battery_voltage);
             gpio_put(SYSTEM_LED_PIN, 0);
         }
     }

@@ -1,22 +1,25 @@
 # generatorPico
 
 ## Description
-This processor is the interface to the hardware. It senses temperature and
-humidity via an SHT30 device connected via I2C. Generator output voltage
-is sampled via the built-in ADC. These data are sent to a Zero W via the
-UART.
+This processor is the interface to the hardware. Generator output voltage
+and battery voltage are sampled via the built-in ADC channels. From a ten
+cycle sample of the generator output waveform, the RMS voltage and
+frequency are calculated every 10 seconds. These data are sent to a Zero W
+via the UART. See generatorZero.git for Zero W code.
 
 ## Setup
 1. Create project source files in the this directory.
 2. Create CMakeLists.txt file in this directory.
 3. Create build directory (add 'build' to .gitignore).
-4. cd to build directory.
-5. Type `cmake ..`
-6. Type `make -j8`
-7. Hold BOOTSEL button on the pico board while plugging it in to the USB
+
+## Build and Programming
+1. cd to build directory.
+2. Type `cmake ..`
+3. Type `make -j8`
+4. Hold BOOTSEL button on the pico board while plugging it in to the USB
  port.
-8. Type `cp <project-name>.uf2 /media/jib/RPI-RP2`
+5. Type `cp generatorPico.uf2 /media/jib/RPI-RP2`
 
 ## References
 [Digikey](Digikey.com/en/maker/projects/...)
-[Other](wellys.com/posts/rp2040_c_linus)
+[Other](wellys.com/posts/rp2040_c_linux)
