@@ -11,7 +11,7 @@
 #include "hardware/adc.h"
 #include "pico/time.h"
 
-static const int VERSION = 3;
+static const int VERSION = 4;
 
 #define BAUDRATE 115200
 
@@ -21,7 +21,7 @@ static const uint DEBUG_PIN = 22;
 
 // ADC channels.
 static const uint POWER_VOLTAGE = 0;
-static const uint BATTERY_VOLTAGE = 1;
+static const uint BATTERY_VOLTAGE = 2;
 
 static const float VOLTAGE_SCALE = 0.173043;
 
@@ -51,7 +51,8 @@ int init_serial2(void) {
 
 int init_adc(void) {
     adc_init();
-    adc_gpio_init(26);
+    adc_gpio_init(26);  // ADC channel 0.
+    adc_gpio_init(28);  // ADC channel 2.
     adc_select_input(0);
 
     return 0;
@@ -159,7 +160,7 @@ float get_battery_voltage(void) {
     }
 
     // Return ADC value scaled to 20 volts.
-    return (float)sum * 305.18e-6;
+    return (float)sum * 251.49e-6;
 }
 
 int send_parameters(struct Power power_parameters, float battery_voltage) {
